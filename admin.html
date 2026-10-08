@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Dorm Points · Admin</title>
+  <meta name="theme-color" content="#5ab4f2">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <div class="sky" aria-hidden="true">
+    <img class="cloud" src="assets/cloud.svg" alt="" style="--top: 4%; --size: 130px; --dur: 120s; --delay: -30s">
+    <img class="cloud" src="assets/cloud.svg" alt="" style="--top: 40%; --size: 100px; --dur: 150s; --delay: -90s">
+  </div>
+
+  <header class="site-header admin-header">
+    <h1 class="logo logo-small" aria-label="Dorm Points">
+      <span style="--c: var(--red)">D</span><span style="--c: var(--yellow)">o</span><span style="--c: var(--green)">r</span><span style="--c: var(--blue)">m</span>
+      <span class="logo-gap"></span>
+      <span style="--c: var(--pink)">P</span><span style="--c: var(--yellow)">o</span><span style="--c: var(--red)">i</span><span style="--c: var(--green)">n</span><span style="--c: var(--blue)">t</span><span style="--c: var(--orange)">s</span>
+    </h1>
+    <p class="tagline">Admin · Update the leaderboard</p>
+    <nav class="nav"><a href="./">← Back to the website</a></nav>
+  </header>
+
+  <main>
+    <section class="panel" aria-labelledby="update-title">
+      <h2 id="update-title" class="panel-title"><span class="title-badge" style="--b: var(--green)">📋</span>Update the points</h2>
+      <ol class="steps">
+        <li>Open your tracker in Excel and click the <b>Students</b> tab.</li>
+        <li>Press <kbd>Ctrl</kbd> + <kbd>A</kbd>, then <kbd>Ctrl</kbd> + <kbd>C</kbd> <span class="muted">(Mac: <kbd>⌘</kbd> + <kbd>A</kbd>, <kbd>⌘</kbd> + <kbd>C</kbd>)</span>.</li>
+        <li>Click the box below and paste with <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li>
+      </ol>
+      <label for="paste" class="sr-only">Paste the Students tab here</label>
+      <textarea id="paste" class="input paste" spellcheck="false" placeholder="Paste the Students tab here…"></textarea>
+      <div class="paste-actions">
+        <button type="button" class="link-btn" id="clear-paste">Clear</button>
+      </div>
+      <div id="summary" role="status" aria-live="polite"></div>
+
+      <div id="preview" hidden>
+        <h3 class="mini-title">Check before publishing</h3>
+        <p class="muted">Bubble names are picked from the full names automatically. Click one to change it; the website will remember it next time. Full names are <b>not</b> published.</p>
+        <div class="table-wrap">
+          <table class="preview-table">
+            <thead>
+              <tr><th>Rank</th><th>Student ID</th><th>Full name</th><th>Name on bubble</th><th class="num">Points</th><th class="num">Change</th></tr>
+            </thead>
+            <tbody id="preview-body"></tbody>
+          </table>
+        </div>
+        <div id="removed"></div>
+        <div class="publish-row">
+          <button type="button" class="btn btn-green btn-big" id="publish">Publish to website 🚀</button>
+          <button type="button" class="btn btn-blue" id="download">Download points.json</button>
+        </div>
+        <div id="publish-status" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="setup" aria-labelledby="setup-title">
+      <h2 id="setup-title" class="panel-title"><span class="title-badge" style="--b: var(--yellow)">🔑</span>One-time setup: publishing key</h2>
+      <p class="muted">The website is stored on GitHub. To let this page update it, make a GitHub key once and paste it here. It's saved only in this browser on this device. Anyone can open this page, but only someone with the key can change the website.</p>
+      <div id="token-state"></div>
+      <ol class="steps">
+        <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub → new fine-grained token</a> (signed in as <b id="repo-owner"></b>).</li>
+        <li><b>Token name:</b> Dorm Points. <b>Expiration:</b> pick a long one, like 1 year (you'll make a new key when it runs out).</li>
+        <li><b>Repository access:</b> choose <i>Only select repositories</i>, then pick <b id="repo-name"></b>.</li>
+        <li><b>Permissions:</b> add <i>Contents</i> and set it to <b>Read and write</b>.</li>
+        <li>Click <b>Generate token</b>, copy it, and paste it below.</li>
+      </ol>
+      <form class="token-row" id="token-form" autocomplete="off">
+        <label for="token" class="sr-only">GitHub key</label>
+        <input id="token" class="input" type="password" placeholder="github_pat_…" spellcheck="false">
+        <button type="submit" class="btn btn-blue">Save &amp; test</button>
+      </form>
+      <button type="button" class="link-btn" id="forget-token" hidden>Forget the key on this device</button>
+      <details class="manual">
+        <summary>No key? Update by hand instead</summary>
+        <p>Click <b>Download points.json</b> above, then on GitHub open the <b>data</b> folder of the repository, choose <b>Add file → Upload files</b>, drop the file in and click <b>Commit changes</b>. The website updates about a minute later.</p>
+      </details>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-hills" aria-hidden="true"></div>
+    <div class="footer-ground"><p>Dorm Points admin · <a href="./">View the website</a></p></div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

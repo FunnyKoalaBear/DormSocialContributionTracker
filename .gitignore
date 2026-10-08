@@ -1,0 +1,7 @@
+# Never commit the tracker spreadsheet (it has full names and the points log)
+*.xlsx
+*.xls
+*.xlsm
+~$*
+.DS_Store
+node_modules/

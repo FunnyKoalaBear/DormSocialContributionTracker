@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dorm Points · Social Contribution Leaderboard</title>
+  <meta name="description" content="Our dorm's social contribution leaderboard: see everyone's points, learn how to earn more, and ask for points.">
+  <meta name="theme-color" content="#5ab4f2">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="sky" aria-hidden="true">
+    <img class="cloud" src="assets/cloud.svg" alt="" style="--top: 6%; --size: 150px; --dur: 110s; --delay: -20s">
+    <img class="cloud" src="assets/cloud.svg" alt="" style="--top: 22%; --size: 100px; --dur: 140s; --delay: -85s">
+    <img class="cloud" src="assets/cloud.svg" alt="" style="--top: 48%; --size: 130px; --dur: 125s; --delay: -50s">
+    <img class="cloud" src="assets/cloud.svg" alt="" style="--top: 72%; --size: 90px; --dur: 150s; --delay: -120s">
+  </div>
+
+  <header class="site-header">
+    <h1 class="logo" aria-label="Dorm Points">
+      <span style="--c: var(--red)">D</span><span style="--c: var(--yellow)">o</span><span style="--c: var(--green)">r</span><span style="--c: var(--blue)">m</span>
+      <span class="logo-gap"></span>
+      <span style="--c: var(--pink)">P</span><span style="--c: var(--yellow)">o</span><span style="--c: var(--red)">i</span><span style="--c: var(--green)">n</span><span style="--c: var(--blue)">t</span><span style="--c: var(--orange)">s</span>
+    </h1>
+    <p class="tagline">Social Contribution Leaderboard</p>
+    <nav class="nav" aria-label="Sections">
+      <a href="#board">🫧 Bubbles</a>
+      <a href="#ranking">🏆 Ranking</a>
+      <a href="#earn">⭐ How to earn</a>
+      <a href="#request">✉️ Ask for points</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="board" class="panel" aria-labelledby="board-title">
+      <div class="board-head">
+        <div>
+          <h2 id="board-title" class="panel-title"><span class="title-badge" style="--b: var(--blue)">🫧</span>Who's on top?</h2>
+          <p class="panel-sub">The more points you have, the higher your bubble floats. Tap a bubble for details.</p>
+        </div>
+        <form class="findme" id="findme" autocomplete="off">
+          <label for="findme-input" class="sr-only">Your student ID</label>
+          <input id="findme-input" class="input" type="text" inputmode="text" placeholder="Your student ID" spellcheck="false" autocapitalize="characters">
+          <button class="btn btn-red" type="submit">Find me</button>
+        </form>
+      </div>
+      <p class="findme-msg" id="findme-msg" role="status" aria-live="polite"></p>
+      <ul class="stats" id="stats" aria-label="Dorm stats"></ul>
+
+      <div class="arena" id="arena">
+        <div class="arena-scenery" aria-hidden="true">
+          <img class="arena-cloud" src="assets/cloud.svg" alt="" style="--top: 10%; --size: 120px; --dur: 70s; --delay: -10s">
+          <img class="arena-cloud" src="assets/cloud.svg" alt="" style="--top: 38%; --size: 84px; --dur: 95s; --delay: -60s">
+          <img class="arena-cloud" src="assets/cloud.svg" alt="" style="--top: 64%; --size: 100px; --dur: 80s; --delay: -35s">
+          <div class="hills-back"></div>
+          <div class="hills-front"></div>
+          <div class="ground"></div>
+        </div>
+        <div class="arena-levels" aria-hidden="true"></div>
+        <div class="arena-bubbles" aria-label="Student bubbles"></div>
+        <div class="bubble-card" id="bubble-card" hidden></div>
+        <p class="arena-message" id="arena-message">Loading the bubbles…</p>
+      </div>
+    </section>
+
+    <section id="ranking" class="panel" aria-labelledby="ranking-title">
+      <h2 id="ranking-title" class="panel-title"><span class="title-badge" style="--b: var(--yellow)">🏆</span>Leaderboard</h2>
+      <div class="ranking-grid">
+        <div>
+          <h3 class="mini-title">Top students</h3>
+          <ol class="top-list" id="top-list"></ol>
+        </div>
+        <div>
+          <h3 class="mini-title">Everyone</h3>
+          <label for="everyone-search" class="sr-only">Search by name or ID</label>
+          <input id="everyone-search" class="input input-small" type="search" placeholder="Search name or ID…">
+          <ol class="everyone" id="everyone"></ol>
+        </div>
+      </div>
+    </section>
+
+    <section id="earn" class="panel" aria-labelledby="earn-title">
+      <h2 id="earn-title" class="panel-title"><span class="title-badge" style="--b: var(--green)">⭐</span>How to earn points</h2>
+      <p class="panel-sub">Dorm points show who's proactive and makes the dorm a nicer place to live.</p>
+      <div class="why">
+        <p class="why-title">Points are used for</p>
+        <ul class="why-list" id="why-list"></ul>
+      </div>
+      <h3 class="mini-title">Ways to earn</h3>
+      <ul class="rules" id="earn-list"></ul>
+      <h3 class="mini-title">Ways to lose points</h3>
+      <ul class="rules" id="lose-list"></ul>
+      <p class="earn-tip">💡 Did something good that the admin might have missed? <a href="#request">Ask for points</a> and attach a photo.</p>
+    </section>
+
+    <section id="request" class="panel" aria-labelledby="request-title">
+      <h2 id="request-title" class="panel-title"><span class="title-badge" style="--b: var(--pink)">✉️</span>Ask for points</h2>
+      <p class="panel-sub">Helped out, cleaned up, or organised something? Tell the dorm admin, and add a photo as proof if you have one.</p>
+
+      <form id="request-form" class="request-form" method="POST" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="_subject" value="Dorm points request">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_next" value="">
+        <input type="text" name="_honey" class="honey" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+        <div class="field">
+          <label for="req-id">Student ID <span class="req">*</span></label>
+          <input id="req-id" class="input" name="Student ID" type="text" required placeholder="e.g. 2026B694" spellcheck="false" autocapitalize="characters" autocomplete="off">
+          <small class="field-hint" id="req-id-hint"></small>
+        </div>
+        <div class="field">
+          <label for="req-name">Your name</label>
+          <input id="req-name" class="input" name="Name" type="text" placeholder="First name" autocomplete="given-name">
+        </div>
+        <div class="field">
+          <label for="req-email">Email (so the admin can reply)</label>
+          <input id="req-email" class="input" name="email" type="email" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="req-activity">What kind of activity?</label>
+          <select id="req-activity" class="input" name="Activity"></select>
+        </div>
+        <div class="field">
+          <label for="req-date">When did it happen?</label>
+          <input id="req-date" class="input" name="Date" type="date">
+        </div>
+        <div class="field field-full">
+          <label for="req-reason">What did you do? <span class="req">*</span></label>
+          <textarea id="req-reason" class="input" name="Reason" rows="4" required minlength="10" placeholder="e.g. I cleaned the 2nd floor kitchen after the party on Friday."></textarea>
+        </div>
+        <div class="field field-full">
+          <span class="label" id="req-photo-label">Photo proof</span>
+          <label class="dropzone" id="dropzone" for="req-photo">
+            <input id="req-photo" name="attachment" type="file" accept="image/*" aria-labelledby="req-photo-label">
+            <span class="dropzone-empty">📷 <b>Add a photo</b><small>Tap to choose, or drop an image here</small></span>
+            <span class="dropzone-full" hidden>
+              <img id="req-photo-preview" alt="Selected photo preview">
+              <span><b id="req-photo-name"></b><small id="req-photo-size"></small></span>
+            </span>
+          </label>
+          <button type="button" class="link-btn" id="req-photo-remove" hidden>Remove photo</button>
+        </div>
+        <div class="form-actions field-full">
+          <button class="btn btn-green btn-big" type="submit" id="req-submit">Send request ✉️</button>
+          <p class="form-error" id="req-error" role="alert"></p>
+        </div>
+        <p class="form-note field-full">Your request goes straight to the dorm admin's email. Approved points show up after the next leaderboard update.</p>
+      </form>
+
+      <div class="sent" id="request-sent" hidden>
+        <div class="sent-icon" aria-hidden="true">🎉</div>
+        <h3>Request sent!</h3>
+        <p>Thanks for helping the dorm. The admin will take a look, and approved points show up after the next update.</p>
+        <button class="btn btn-blue" type="button" id="request-again">Send another</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-hills" aria-hidden="true"></div>
+    <div class="footer-ground">
+      <p>Made with 💛 for our dorm · <span id="footer-updated"></span> · <a href="admin.html">Admin</a></p>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/bubbles.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
