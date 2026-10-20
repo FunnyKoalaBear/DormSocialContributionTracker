@@ -26,7 +26,7 @@ It's a plain static website (HTML/CSS/JS, no build step), so it runs for free on
 Requests are emailed to you through [FormSubmit](https://formsubmit.co) (free, no account needed).
 
 1. Open the website and send a test request yourself.
-2. FormSubmit emails **2024m735@kuas.ac.jp** an activation link. Click it. (Check spam/junk if you don't see it.)
+2. FormSubmit emails **sbmithun@gmail.com** an activation link. Click it. (Check spam/junk if you don't see it.)
 3. Done: every request now arrives as an email with the student's name, university email, activity, date, description and photo. Hitting **Reply** answers the student.
 
 Optional: the activation email also gives you a random code. Put it in `js/config.js` as `requestEmail` to hide your address from the page source.

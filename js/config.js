@@ -10,7 +10,7 @@ window.DORM_CONFIG = {
   // The very first request sends you an activation email: click the link in it once.
   // That email also gives you a random code; put the code here instead of your
   // address if you don't want the address visible in the page source.
-  requestEmail: '2024m735@kuas.ac.jp',
+  requestEmail: 'sbmithun@gmail.com',
 
   // Where the admin page publishes new points.
   github: {
