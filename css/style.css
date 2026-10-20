@@ -435,6 +435,20 @@ textarea.input { resize: vertical; min-height: 110px; }
 }
 .card-close:hover { background: rgba(42, 33, 64, .08); }
 
+/* points log inside the card */
+.bubble-card { width: 280px; }
+.card-log-title { margin: 10px 0 4px; font-family: var(--font-display); font-weight: 400; font-size: 15px; text-align: left; }
+.card-log { max-height: 190px; overflow-y: auto; margin: 0; padding: 0 2px 0 0; list-style: none; text-align: left; overscroll-behavior: contain; }
+.card-log li { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; align-items: start; padding: 5px 0; font-size: 13.5px; line-height: 1.3; }
+.card-log li + li { border-top: 2px dashed #ece5d2; }
+.cl-icon { font-size: 15px; line-height: 1.2; }
+.cl-text { font-weight: 800; overflow-wrap: anywhere; }
+.cl-text small { display: block; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+.cl-pts { font-family: var(--font-display); font-size: 15px; color: #23843a; }
+.cl-pts.is-neg { color: #c73535; }
+.card-empty { margin-top: 0; text-align: left; }
+.anon { color: var(--ink-soft); font-style: italic; }
+
 /* ------------------------------------------------------------ ranking */
 
 .ranking-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; }
@@ -495,6 +509,40 @@ textarea.input { resize: vertical; min-height: 110px; }
 .ev-pts { font-family: var(--font-display); font-size: 20px; }
 .ev-pts.is-neg { color: #c73535; }
 .everyone.is-empty::after { content: 'No one matches that search.'; display: block; padding: 14px; text-align: center; color: var(--ink-soft); font-weight: 800; }
+
+/* ------------------------------------------------------------ points log board */
+
+.log-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+.log-tools input { flex: 1 1 220px; min-width: 0; }
+.log-tools select { flex: 0 1 220px; }
+.log-count { color: var(--ink-soft); font-weight: 800; font-size: 14px; }
+.log-list { list-style: none; margin: 12px 0 0; padding: 0; background: #fff; border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; }
+.log-month { padding: 6px 14px; font-family: var(--font-display); font-size: 16px; background: #fff3c4; border-bottom: 2px solid var(--ink); }
+.log-month:not(:first-child) { border-top: 2px solid var(--ink); }
+.log-item { display: grid; grid-template-columns: 58px 30px 1fr auto; gap: 10px; align-items: center; padding: 8px 14px; }
+.log-item + .log-item { border-top: 2px dashed #e7e1d0; }
+.log-date { font-weight: 800; font-size: 13.5px; color: var(--ink-soft); white-space: nowrap; }
+.log-icon { font-size: 20px; text-align: center; }
+.log-body { min-width: 0; line-height: 1.3; }
+.log-who { padding: 0; margin-right: 6px; font-weight: 900; background: none; border: 0; border-bottom: 2px dotted currentColor; cursor: pointer; }
+.log-who:hover { color: #1d6fd1; }
+.log-what { overflow-wrap: anywhere; }
+.log-body small { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+.log-pts {
+  min-width: 44px;
+  padding: 1px 9px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .25);
+  background: var(--green);
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+}
+.log-item.is-neg .log-pts { background: var(--red); }
+.log-more-row { display: flex; justify-content: center; margin-top: 14px; }
+.log-more-row:has([hidden]) { display: none; }
 
 /* ------------------------------------------------------------ earn */
 
@@ -631,7 +679,12 @@ textarea.input { resize: vertical; min-height: 110px; }
   .request-form { grid-template-columns: 1fr; }
   .top-name { font-size: 17px; }
   .top-pts { font-size: 24px; }
-  .bubble-card { width: 210px; }
+  .bubble-card { width: min(270px, calc(100% - 16px)); }
+  .log-item { grid-template-columns: 26px 1fr auto; gap: 8px; padding: 8px 10px; }
+  .log-date { grid-column: 2 / 4; grid-row: 1; font-size: 12.5px; }
+  .log-icon { grid-row: 1 / 3; }
+  .log-body { grid-column: 2; grid-row: 2; }
+  .log-pts { grid-column: 3; grid-row: 2; }
 }
 
 @media (prefers-reduced-motion: reduce) {

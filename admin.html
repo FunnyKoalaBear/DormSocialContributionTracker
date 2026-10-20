@@ -33,29 +33,28 @@
     <section class="panel" aria-labelledby="update-title">
       <h2 id="update-title" class="panel-title"><span class="title-badge" style="--b: var(--green)">📋</span>Update the points</h2>
       <ol class="steps">
-        <li>Open your tracker in Excel and click the <b>Students</b> tab.</li>
-        <li>Press <kbd>Ctrl</kbd> + <kbd>A</kbd>, then <kbd>Ctrl</kbd> + <kbd>C</kbd> <span class="muted">(Mac: <kbd>⌘</kbd> + <kbd>A</kbd>, <kbd>⌘</kbd> + <kbd>C</kbd>)</span>.</li>
-        <li>Click the box below and paste with <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li>
+        <li>Save your <b>Social Contribution Tracker</b> in Excel.</li>
+        <li>Drop the file in the box below (or click it to choose the file).</li>
+        <li>Check the preview, then click <b>Publish to website</b>.</li>
       </ol>
-      <label for="paste" class="sr-only">Paste the Students tab here</label>
-      <textarea id="paste" class="input paste" spellcheck="false" placeholder="Paste the Students tab here…"></textarea>
-      <div class="paste-actions">
-        <button type="button" class="link-btn" id="clear-paste">Clear</button>
-      </div>
+      <label class="dropzone xlsx-drop" id="xlsx-drop" for="xlsx-file">
+        <input id="xlsx-file" type="file" accept=".xlsx,.xlsm,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+        <span class="dropzone-empty">📊 <b>Drop your Excel file here</b><small>or click to choose it · it's read on this device only and never uploaded</small></span>
+        <span class="dropzone-full" hidden><span class="xlsx-icon" aria-hidden="true">📊</span><span><b id="xlsx-name"></b><small id="xlsx-info"></small></span></span>
+      </label>
       <div id="summary" role="status" aria-live="polite"></div>
 
       <div id="preview" hidden>
         <h3 class="mini-title">Check before publishing</h3>
-        <p class="muted">Bubble names are picked from the full names automatically. Click one to change it; the website will remember it next time. Full names are <b>not</b> published.</p>
+        <p class="muted">Only the <b>Website Name</b> (for students who agreed), points and the points log are published. Everyone without a Website Name is shown as an anonymous <b>?</b> bubble. Full names and student IDs never leave this page. To show or change a name, edit the <b>Website Name</b> column on the Students tab in Excel and upload again.</p>
         <div class="table-wrap">
           <table class="preview-table">
             <thead>
-              <tr><th>Rank</th><th>Student ID</th><th>Full name</th><th>Name on bubble</th><th class="num">Points</th><th class="num">Change</th></tr>
+              <tr><th>Rank</th><th>On the website</th><th>Full name <span class="muted">(private)</span></th><th class="num">Points</th><th class="num">Entries</th><th class="num">Change</th></tr>
             </thead>
             <tbody id="preview-body"></tbody>
           </table>
         </div>
-        <div id="removed"></div>
         <div class="publish-row">
           <button type="button" class="btn btn-green btn-big" id="publish">Publish to website 🚀</button>
           <button type="button" class="btn btn-blue" id="download">Download points.json</button>
@@ -95,6 +94,7 @@
 
   <script src="js/config.js"></script>
   <script src="js/core.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

@@ -30,6 +30,10 @@
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  /** Anonymous students (no `label`) show a "?" bubble. */
+  function bubbleText(s) { return s.label || '?'; }
+  function pointsText(s) { return (s.points < 0 ? '−' : '') + Math.abs(s.points) + ' pts'; }
+
   function rand(min, max) { return min + Math.random() * (max - min); }
 
   const CJK_RE = /[぀-ヿ㐀-鿿가-힯]/;
@@ -77,6 +81,7 @@
       this.layer = root.querySelector('.arena-bubbles');
       this.levelLayer = root.querySelector('.arena-levels');
       this.onSelect = (options && options.onSelect) || function () {};
+      this.onBubbleClick = (options && options.onBubbleClick) || null;
       this.bubbles = [];
       this.selected = null;
       this.meId = null;
@@ -91,7 +96,8 @@
         const el = e.target.closest('.bubble');
         if (!el) return;
         const b = this.bubbles.find(x => x.el === el);
-        this.select(b && b !== this.selected ? b.s.id : null);
+        if (this.onBubbleClick) this.onBubbleClick(b ? b.s.id : null);
+        else this.select(b && b !== this.selected ? b.s.id : null);
       });
       if ('ResizeObserver' in window) new ResizeObserver(() => this.layout(false)).observe(root);
       else window.addEventListener('resize', () => this.layout(false));
@@ -119,11 +125,11 @@
         el.type = 'button';
         el.className = 'bubble';
         el.dataset.id = s.id;
-        el.setAttribute('aria-label', `${s.name}, ${s.id}: ${s.points} points, rank ${s.rank}`);
+        el.setAttribute('aria-label', `${s.name}: ${s.points} points, rank ${s.rank}`);
         el.innerHTML =
           '<span class="bubble-face">' +
-          `<span class="bubble-name">${escapeHtml(s.name)}</span>` +
-          `<span class="bubble-id">${escapeHtml(s.id)}</span>` +
+          `<span class="bubble-name">${escapeHtml(bubbleText(s))}</span>` +
+          `<span class="bubble-id">${escapeHtml(pointsText(s))}</span>` +
           '</span>' +
           (MEDALS[s.rank] && s.points > 0 ? `<span class="bubble-medal" aria-hidden="true">${MEDALS[s.rank]}</span>` : '') +
           '<span class="bubble-you" aria-hidden="true">YOU</span>';
@@ -268,7 +274,7 @@
     styleBubble(b) {
       const d = b.r * 2;
       const inner = d - 6; // minus the outline
-      const name = b.s.name;
+      const name = bubbleText(b.s);
       let lines = [name];
       let fs = Math.min(d * 0.25, (inner * 0.84) / emWidth(name, 900));
       const split = fs < 10.5 && splitName(name);
@@ -282,7 +288,7 @@
         const fs3 = Math.min(d * 0.19, (inner * 0.7) / Math.max.apply(null, three.map(w => emWidth(w, 900))));
         if (fs3 > fs) { lines = three; fs = fs3; }
       }
-      const fid = Math.min(d * 0.15, (inner * 0.8) / emWidth(b.s.id, 800));
+      const fid = Math.min(d * 0.15, (inner * 0.8) / emWidth(pointsText(b.s), 800));
       b.el.style.setProperty('--d', d.toFixed(1) + 'px');
       b.el.style.setProperty('--fs', Math.max(7.5, fs).toFixed(1) + 'px');
       b.el.style.setProperty('--fid', Math.max(7, fid).toFixed(1) + 'px');

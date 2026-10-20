@@ -1,102 +1,100 @@
-// Run with: node --test tests/
+// Run with: node --test tests/core.test.js
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const core = require('../js/core.js');
 
-// Shaped like Ctrl+A / Ctrl+C on the tracker's "Students" tab (names are made up).
-const STUDENTS_TAB = [
-  'Social Contribution Points: Students\t\t\t\t\t\t\t\t',
-  'Fill in names (yellow cells). Totals update automatically from the Points Log.\t\t\t\t\t\t\t\t',
-  'Dorm total:\t27\t\t\t\t\t\t\t',
-  '\t\t\t\t\t\t\t\t',
-  '#\tStudent ID\tName\tStarting Points\tPoints Earned\tPoints Lost\tEntries\tTotal\tRank',
-  '56\t\t\t\t\t\t\t\t',
-  '1\t2026B100\tTANAKA Kenji Ray\t0\t14\t0\t2\t14\t1',
-  '2\t2026M200\tRAHMAN Muhammad Arif\t0\t8\t0\t2\t8\t2',
-  '3\t2026M300\tLEE Ana Maria\t0\t8\t0\t2\t8\t2',
-  '4\t2026B400\tKOVAC Ivan\t0\t6\t−5\t2\t1\t4',
-  '5\t2025M500\t山田 太郎\t0\t0\t0\t0\t0\t5',
-  '6\t2025B600\tAung Min Thu\t0\t0\t-4\t1\t-4\t6',
-  '\tDORM\tWhole dorm (shared points)\t\t0\t0\t0\t0\t',
-].join('\r\n') + '\r\n';
+// Shaped like SheetJS sheet_to_json(ws, { header: 1, raw: true }) on the tracker (names are made up).
+function workbook() {
+  return {
+    Students: [
+      ['Social Contribution Points: Students'],
+      ['Fill in names (yellow cells). Totals update automatically from the Points Log.'],
+      ['Dorm total:', 27],
+      [],
+      ['#', 'Student ID', 'Name', 'Starting Points', 'Points Earned', 'Points Lost', 'Entries', 'Total', 'Rank', 'Website Name'],
+      [56, '', '', '', '', '', '', '', '', ''],
+      [1, '2026B100', 'TANAKA Kenji Ray', 0, 14, 0, 2, 14, 1, 'Ken'],
+      [2, '2026M200', 'RAHMAN Muhammad Arif', 0, 8, 0, 1, 8, 2, ''],
+      [3, '2026M300', 'LEE Ana Maria', 2, 6, 0, 1, 8, 2, 'Ana'],
+      [4, '2026B400', 'KOVAC Ivan', 0, 6, -5, 2, 1, 4, ''],
+      [5, '2025M500', '山田 太郎', 0, 0, 0, 0, 0, 5, ''],
+    ],
+    'Points Log': [
+      ['Points Log'],
+      ['One row per add/subtract. Fill the yellow columns: Date, Student ID, Category, Reason.'],
+      [],
+      [],
+      ['Date', 'Student ID', 'Name', 'Category', 'Custom Points\n(optional)', 'Points', 'Reason / Details', 'Recorded By'],
+      [46282, '2026B100', 'TANAKA Kenji Ray', 'Dorm Event', '', 6, '', 'Admin'],
+      [46282, '2026B400', 'KOVAC Ivan', 'Dorm Event', '', 6, '', 'Admin'],
+      [46282, '2026M300', 'LEE Ana Maria', 'Dorm Event', '', 6, '', 'Admin'],
+      ['2026-10-09', '2026B100', 'TANAKA Kenji Ray', 'Dorm Initiative', 3, 8, 'Cleaned the kitchen with Arif', 'Admin'],
+      ['2026-10-09', '2026M200', 'RAHMAN Muhammad Arif', 'Dorm Initiative', 8, '', 'Cleaned the kitchen with Kenji', 'Admin'],
+      ['2026-10-10', '2026B400', 'KOVAC Ivan', 'Rule Violation', '', '', '', 'Admin'],
+      ['2026-10-11', '2026X999', 'Nobody', 'Meeting', '', 4, '', 'Admin'],
+    ],
+    'Point System': [
+      ['The Social Contribution System'],
+      [],
+      [],
+      ['Category', 'Points', 'Notes'],
+      ['Dorm Event', 6, ''],
+      ['Rule Violation', -5, ''],
+      ['Dorm Initiative', '', 'type 2 to 8 points in the log'],
+    ],
+  };
+}
 
-test('reads the Students tab copied from Excel', () => {
-  const res = core.parseStudents(STUDENTS_TAB);
+test('reads students, website names and the points log', () => {
+  const res = core.parseWorkbook(workbook());
   assert.equal(res.error, null);
-  assert.deepEqual(res.warnings, []);
-  assert.deepEqual(res.skipped.map(s => s.id), ['DORM']);
   assert.deepEqual(
-    res.students.map(s => [s.id, s.name, s.points]),
+    res.students.map(s => [s.id, s.name, s.points, s.entries.length]),
     [
-      ['2026B100', 'Kenji', 14],
-      ['2026M200', 'Arif', 8],
-      ['2026M300', 'Ana', 8],
-      ['2026B400', 'Ivan', 1],
-      ['2025M500', '太郎', 0],
-      ['2025B600', 'Aung Min Thu', -4],
+      ['2026B100', 'Ken', 14, 2],
+      ['2026M200', '', 8, 1],
+      ['2026M300', 'Ana', 8, 2], // 2 starting points + 6
+      ['2026B400', '', 1, 2], // Rule Violation filled in from the Point System
+      ['2025M500', '', 0, 0],
     ],
   );
+  assert.equal(res.log[0].date, '2026-09-17'); // Excel date serial
+  assert.equal(res.log.length, 6);
 });
 
-test('ranks ties together', () => {
-  const ranked = core.rankStudents(core.parseStudents(STUDENTS_TAB).students);
-  assert.deepEqual(ranked.map(s => s.rank), [1, 2, 2, 4, 5, 6]);
+test('warns about mismatched points and unknown IDs', () => {
+  const res = core.parseWorkbook(workbook());
+  assert.ok(res.warnings.some(w => /Custom Points.*row 9 \(custom 3, used 8\)/.test(w)));
+  assert.ok(res.warnings.some(w => /2026X999 isn't on the Students tab/.test(w)));
+  assert.ok(!res.warnings.some(w => /Total says/.test(w)));
 });
 
-test('spots the Points Log tab and explains', () => {
-  const log = [
-    'Points Log\t\t\t\t\t\t\t',
-    'One row per add/subtract. Fill the yellow columns: Date, Student ID, Category, Reason.\t\t\t\t\t\t\t',
-    'Date\tStudent ID\tName\tCategory\t"Custom Points\n(optional)"\tPoints\tReason / Details\tRecorded By',
-    '2026-09-17\t2026B100\tTANAKA Kenji Ray\tDorm Initiative\t2\t2\tMug competition\tAdmin',
-  ].join('\r\n');
-  assert.match(core.parseStudents(log).error, /Points Log/);
+test('swaps names in reasons: website name if shown, otherwise "a dorm-mate"', () => {
+  const res = core.parseWorkbook(workbook());
+  const reasons = res.log.filter(e => e.reason).map(e => e.publicReason);
+  assert.deepEqual(reasons, ['Cleaned the kitchen with a dorm-mate', 'Cleaned the kitchen with Ken']);
+  const students = [{ fullName: 'SIDDIQUE Abu Bakar', name: 'Abu Bakar' }, { fullName: 'BADAMKHATAN Munkh-Ochir', name: '' }];
+  assert.equal(core.redactReason('Helped Abu Bakar and Munkh-Ochir', students).text, 'Helped Abu Bakar and a dorm-mate');
+  assert.equal(core.redactReason('Brought trash back from beach', students).changed, false);
 });
 
-test('accepts a simple ID / name / points paste without a header', () => {
-  const res = core.parseStudents('2026B100\tTANAKA Kenji\t12\n2026M200\t5\n');
-  assert.equal(res.error, null);
-  assert.deepEqual(res.students.map(s => [s.id, s.name, s.points]), [['2026B100', 'Kenji', 12], ['2026M200', '2026M200', 5]]);
+test('ranks ties together, named students first', () => {
+  const ranked = core.rankStudents(core.parseWorkbook(workbook()).students);
+  assert.deepEqual(ranked.map(s => [s.name, s.rank]), [['Ken', 1], ['Ana', 2], ['', 2], ['', 4], ['', 5]]);
 });
 
-test('warns about duplicates and bad numbers', () => {
-  const res = core.parseStudents('Student ID\tName\tTotal\n2026B100\tA B\t3\n2026B100\tA B\t4\n2026M200\tC D\tabc\n2026M300\tE F\t\n');
-  assert.deepEqual(res.students.map(s => [s.id, s.points]), [['2026B100', 3], ['2026M300', 0]]);
-  assert.equal(res.warnings.length, 3);
+test('the published file has no student IDs or full names', () => {
+  const res = core.parseWorkbook(workbook());
+  const text = core.buildPointsFile(res.students, '2026-10-20T00:00:00.000Z', () => 0.5);
+  const data = JSON.parse(text);
+  assert.doesNotMatch(text, /2026B100|2026M200|TANAKA|RAHMAN|Kenji|Arif|Admin/);
+  assert.deepEqual(data.students.map(s => [s.name || null, s.points]), [['Ken', 14], ['Ana', 8], [null, 8], [null, 1], [null, 0]]);
+  assert.equal(data.log.length, 7); // 6 log rows + Ana's starting points
+  const ken = data.students[0].key;
+  assert.deepEqual(data.log.filter(e => e.who === ken).map(e => e.points), [8, 6]);
 });
 
-test('uses hand-typed bubble names when given', () => {
-  const res = core.parseStudents(STUDENTS_TAB, { '2025B600': 'Aung' });
-  assert.equal(res.students.find(s => s.id === '2025B600').name, 'Aung');
-});
-
-test('picks a friendly first name', () => {
-  const cases = {
-    'SAIEF Easir Al': 'Easir',
-    'HIGUERA OLIVARES Antonio Alejandro': 'Antonio',
-    'ANWAR Muhammad Awais': 'Awais',
-    'HAIDER Syed Farzam': 'Farzam',
-    'SIDDIQUE Abu Bakar': 'Abu Bakar',
-    'JINAN M A Munim': 'Munim',
-    'MAROTTE-MARQUEBIELLE Sacha Jean': 'Sacha',
-    'MUHAMMAD': 'Muhammad',
-    'Hein Thant Sin': 'Hein Thant Sin',
-    '有吉 悠人': '悠人',
-    '': '',
-  };
-  for (const [full, first] of Object.entries(cases)) assert.equal(core.firstNameOf(full), first, full);
-});
-
-test('writes a points file with only ID, name and points', () => {
-  const { students } = core.parseStudents(STUDENTS_TAB);
-  const file = JSON.parse(core.buildPointsFile(students, { '2025B600': 'Aung' }, '2026-10-08T00:00:00.000Z'));
-  assert.equal(file.updated, '2026-10-08T00:00:00.000Z');
-  assert.deepEqual(Object.keys(file.students[0]), ['id', 'name', 'points']);
-  assert.equal(file.students[0].id, '2026B100');
-  assert.deepEqual(file.names, { '2025B600': 'Aung' });
-});
-
-test('normalizes typed student IDs', () => {
-  assert.equal(core.normalizeId(' 2026b694 '), '2026B694');
-  assert.equal(core.normalizeId('2026b694@kuas.ac.jp'), '2026B694');
+test('reports a missing tab', () => {
+  assert.match(core.parseWorkbook({ Students: [] }).error, /Points Log/);
+  assert.match(core.parseWorkbook({}).error, /Students/);
 });

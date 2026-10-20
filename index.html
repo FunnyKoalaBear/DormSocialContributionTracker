@@ -32,6 +32,7 @@
       <a href="#ranking">🏆 Ranking</a>
       <a href="#earn">⭐ How to earn</a>
       <a href="#request">✉️ Ask for points</a>
+      <a href="#log">📜 Points log</a>
     </nav>
   </header>
 
@@ -40,11 +41,11 @@
       <div class="board-head">
         <div>
           <h2 id="board-title" class="panel-title"><span class="title-badge" style="--b: var(--blue)">🫧</span>Who's on top?</h2>
-          <p class="panel-sub">The more points you have, the higher your bubble floats. Tap a bubble for details.</p>
+          <p class="panel-sub">The more points you have, the higher your bubble floats. Hover or tap a bubble to see how they got their points. <b>?</b> bubbles are students who stay anonymous.</p>
         </div>
         <form class="findme" id="findme" autocomplete="off">
-          <label for="findme-input" class="sr-only">Your student ID</label>
-          <input id="findme-input" class="input" type="text" inputmode="text" placeholder="Your student ID" spellcheck="false" autocapitalize="characters">
+          <label for="findme-input" class="sr-only">Your name on the board</label>
+          <input id="findme-input" class="input" type="text" placeholder="Your name on the board" spellcheck="false">
           <button class="btn btn-red" type="submit">Find me</button>
         </form>
       </div>
@@ -76,8 +77,8 @@
         </div>
         <div>
           <h3 class="mini-title">Everyone</h3>
-          <label for="everyone-search" class="sr-only">Search by name or ID</label>
-          <input id="everyone-search" class="input input-small" type="search" placeholder="Search name or ID…">
+          <label for="everyone-search" class="sr-only">Search by name</label>
+          <input id="everyone-search" class="input input-small" type="search" placeholder="Search name…">
           <ol class="everyone" id="everyone"></ol>
         </div>
       </div>
@@ -109,17 +110,12 @@
         <input type="text" name="_honey" class="honey" tabindex="-1" autocomplete="off" aria-hidden="true">
 
         <div class="field">
-          <label for="req-id">Student ID <span class="req">*</span></label>
-          <input id="req-id" class="input" name="Student ID" type="text" required placeholder="e.g. 2026B694" spellcheck="false" autocapitalize="characters" autocomplete="off">
-          <small class="field-hint" id="req-id-hint"></small>
+          <label for="req-name">Your name <span class="req">*</span></label>
+          <input id="req-name" class="input" name="Name" type="text" required placeholder="Full name" autocomplete="name">
         </div>
         <div class="field">
-          <label for="req-name">Your name</label>
-          <input id="req-name" class="input" name="Name" type="text" placeholder="First name" autocomplete="given-name">
-        </div>
-        <div class="field">
-          <label for="req-email">Email (so the admin can reply)</label>
-          <input id="req-email" class="input" name="email" type="email" placeholder="you@example.com" autocomplete="email">
+          <label for="req-email">University email <span class="req">*</span></label>
+          <input id="req-email" class="input" name="email" type="email" required placeholder="So the admin knows it's you" autocomplete="email">
         </div>
         <div class="field">
           <label for="req-activity">What kind of activity?</label>
@@ -158,6 +154,20 @@
         <p>Thanks for helping the dorm. The admin will take a look, and approved points show up after the next update.</p>
         <button class="btn btn-blue" type="button" id="request-again">Send another</button>
       </div>
+    </section>
+
+    <section id="log" class="panel" aria-labelledby="log-title">
+      <h2 id="log-title" class="panel-title"><span class="title-badge" style="--b: var(--orange)">📜</span>Points log</h2>
+      <p class="panel-sub">Every point given or taken, newest first. Tap a name to find their bubble.</p>
+      <div class="log-tools">
+        <label for="log-search" class="sr-only">Search the log</label>
+        <input id="log-search" class="input input-small" type="search" placeholder="Search names or reasons…">
+        <label for="log-category" class="sr-only">Category</label>
+        <select id="log-category" class="input input-small"></select>
+        <span class="log-count" id="log-count" role="status" aria-live="polite"></span>
+      </div>
+      <ol class="log-list" id="log-list"></ol>
+      <div class="log-more-row"><button type="button" class="btn btn-blue" id="log-more" hidden>Show more</button></div>
     </section>
   </main>
 

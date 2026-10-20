@@ -1,12 +1,14 @@
-/* Dorm Points: admin page (paste from Excel, preview, publish to GitHub). */
+/* Dorm Points: admin page (upload the Excel tracker, preview, publish to GitHub). */
 (function () {
   'use strict';
 
   const cfg = window.DORM_CONFIG || {};
   const gh = cfg.github || {};
   const core = window.DormCore;
-  const $ = sel => document.querySelector(sel);
+  const $ = (sel, root) => (root || document).querySelector(sel);
   const TOKEN_KEY = 'dormPoints.githubToken';
+  // Points per student at the last publish from this browser (kept here only, for the "Change" column).
+  const LAST_KEY = 'dormPoints.lastPublished';
 
   const store = {
     get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
@@ -14,97 +16,112 @@
     remove(key) { try { localStorage.removeItem(key); } catch (e) { /* private mode */ } },
   };
 
-  let current = null;         // what the website shows now
-  let overrides = {};         // student ID -> bubble name typed by hand
-  let parsed = null;          // result of DormCore.parseStudents
+  let parsed = null; // result of DormCore.parseWorkbook
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
   function notice(kind, html) { return `<div class="notice notice-${kind}">${html}</div>`; }
   function siteUrl() { return location.href.replace(/admin\.html.*$/, ''); }
+  function lastPublished() {
+    try { return JSON.parse(store.get(LAST_KEY) || 'null'); } catch (e) { return null; }
+  }
 
-  // ------------------------------------------------------------------ current data
+  // ------------------------------------------------------------------ reading the file
 
-  async function loadCurrent() {
+  async function readFile(file) {
+    const summary = $('#summary');
+    $('#preview').hidden = true;
+    $('#publish-status').innerHTML = '';
+    showFile(file, 'Reading…');
+    if (!window.XLSX) {
+      summary.innerHTML = notice('error', 'The Excel reader didn\'t load. Check your internet connection and refresh the page.');
+      return;
+    }
+    let sheets;
     try {
-      const res = await fetch('data/points.json?v=' + Date.now(), { cache: 'no-store' });
-      if (res.ok) current = await res.json();
-    } catch (e) { /* first run, or offline */ }
-    overrides = Object.assign({}, (current && current.names) || {});
-    if (parsed) update();
+      const wb = window.XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      sheets = {};
+      for (const name of wb.SheetNames) {
+        sheets[name] = window.XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: '' });
+      }
+    } catch (e) {
+      parsed = null;
+      showFile(file, 'Couldn\'t open this file');
+      summary.innerHTML = notice('error', 'That doesn\'t look like an Excel file. Choose the <b>.xlsx</b> tracker file.');
+      return;
+    }
+    parsed = core.parseWorkbook(sheets);
+    showFile(file, `Last saved ${new Date(file.lastModified).toLocaleString()}`);
+    update();
+  }
+
+  function showFile(file, info) {
+    const drop = $('#xlsx-drop');
+    drop.classList.toggle('has-file', !!file);
+    $('.dropzone-empty', drop).hidden = !!file;
+    $('.dropzone-full', drop).hidden = !file;
+    if (file) {
+      $('#xlsx-name').textContent = file.name;
+      $('#xlsx-info').textContent = info || '';
+    }
   }
 
   // ------------------------------------------------------------------ preview
 
   function update() {
-    const text = $('#paste').value;
     const summary = $('#summary');
-    if (!text.trim()) {
-      parsed = null;
-      summary.innerHTML = '';
-      $('#preview').hidden = true;
-      return;
-    }
-    parsed = core.parseStudents(text, overrides);
+    if (!parsed) { summary.innerHTML = ''; $('#preview').hidden = true; return; }
     if (parsed.error) {
       summary.innerHTML = notice('error', esc(parsed.error));
       $('#preview').hidden = true;
       return;
     }
 
-    const before = new Map(((current && current.students) || []).map(s => [s.id, s]));
+    const before = lastPublished();
     const ranked = core.rankStudents(parsed.students);
     let changed = 0;
     let added = 0;
     $('#preview-body').innerHTML = ranked.map(s => {
-      const old = before.get(s.id);
       let diff = '<span class="diff-same">–</span>';
-      if (!old) { diff = '<span class="diff-new">new</span>'; added++; }
-      else if (old.points !== s.points) {
-        const d = s.points - old.points;
-        diff = `<span class="${d > 0 ? 'diff-up' : 'diff-down'}">${d > 0 ? '▲ +' : '▼ −'}${Math.abs(d)}</span>`;
-        changed++;
+      if (before) {
+        const old = before[s.id];
+        if (old == null) { diff = '<span class="diff-new">new</span>'; added++; }
+        else if (old !== s.points) {
+          const d = s.points - old;
+          diff = `<span class="${d > 0 ? 'diff-up' : 'diff-down'}">${d > 0 ? '▲ +' : '▼ −'}${Math.abs(d)}</span>`;
+          changed++;
+        }
       }
-      return `<tr><td>${s.rank}</td><td class="mono">${esc(s.id)}</td><td class="muted">${esc(s.fullName)}</td>` +
-        `<td><input class="name-edit${overrides[s.id] ? ' is-custom' : ''}" data-id="${esc(s.id)}" value="${esc(s.name)}" placeholder="${esc(s.autoName)}" aria-label="Bubble name for ${esc(s.id)}"></td>` +
-        `<td class="num pts">${s.points < 0 ? '−' : ''}${Math.abs(s.points)}</td><td class="num">${diff}</td></tr>`;
+      const shown = s.name ? `<b>${esc(s.name)}</b>` : '<span class="muted"><i>Anonymous</i> (?)</span>';
+      return `<tr><td>${s.rank}</td><td>${shown}</td><td class="muted">${esc(s.fullName)}</td>` +
+        `<td class="num pts">${s.points < 0 ? '−' : ''}${Math.abs(s.points)}</td><td class="num">${s.entries.length}</td><td class="num">${diff}</td></tr>`;
     }).join('');
 
-    const present = new Set(parsed.students.map(s => s.id));
-    const removed = Array.from(before.values()).filter(s => !present.has(s.id));
-    $('#removed').innerHTML = removed.length
-      ? notice('warn', `<b>${removed.length} student${removed.length > 1 ? 's are' : ' is'} on the website but not in your paste</b>, so publishing will remove them: ` +
-        removed.map(s => `${esc(s.name)} (${esc(s.id)})`).join(', ') + '.')
-      : '';
-
     const total = parsed.students.reduce((sum, s) => sum + s.points, 0);
-    let html = notice('ok', `Found <b>${parsed.students.length}</b> students with <b>${total}</b> points in total.` +
-      (current ? ` Compared with the website: <b>${changed}</b> changed, <b>${added}</b> new, <b>${removed.length}</b> removed.` : ''));
+    const named = parsed.students.filter(s => s.name).length;
+    let html = notice('ok', `Found <b>${parsed.students.length}</b> students (<b>${named}</b> named, <b>${parsed.students.length - named}</b> anonymous), ` +
+      `<b>${parsed.log.length}</b> log entries and <b>${total}</b> points in total.` +
+      (before ? ` Since your last publish from this browser: <b>${changed}</b> changed, <b>${added}</b> new.` : ''));
     if (parsed.warnings.length) html += notice('warn', '<b>Please check:</b><ul>' + parsed.warnings.map(w => `<li>${esc(w)}</li>`).join('') + '</ul>');
-    if (parsed.skipped.length) html += notice('info', 'Skipped rows that aren\'t students: ' + parsed.skipped.map(s => `${esc(s.id)} (row ${s.line})`).join(', ') + '.');
+    const swapped = parsed.log.filter(e => e.publicReason !== e.reason);
+    if (swapped.length) {
+      html += notice('info', '<b>Names in reasons are swapped</b> for the website name, or “a dorm-mate” for students who aren\'t shown:<ul>' +
+        swapped.map(e => `<li>${esc(e.reason)} → <b>${esc(e.publicReason)}</b></li>`).join('') + '</ul>');
+    }
     summary.innerHTML = html;
     $('#preview').hidden = false;
     $('#publish-status').innerHTML = '';
   }
 
-  function onNameEdit(e) {
-    const input = e.target.closest('.name-edit');
-    if (!input || !parsed) return;
-    const id = input.dataset.id;
-    const s = parsed.students.find(x => x.id === id);
-    const value = input.value.trim();
-    if (!value || value === s.autoName) delete overrides[id];
-    else overrides[id] = value;
-    s.name = value || s.autoName;
-    input.classList.toggle('is-custom', !!overrides[id]);
+  function buildFile() {
+    return core.buildPointsFile(parsed.students, new Date().toISOString());
   }
 
-  function buildFile() {
-    const present = new Set(parsed.students.map(s => s.id));
-    const keep = {};
-    for (const id of Object.keys(overrides)) if (present.has(id)) keep[id] = overrides[id];
-    return core.buildPointsFile(parsed.students, keep, new Date().toISOString());
+  function rememberPublished() {
+    const snap = {};
+    for (const s of parsed.students) snap[s.id] = s.points;
+    store.set(LAST_KEY, JSON.stringify(snap));
   }
 
   // ------------------------------------------------------------------ GitHub
@@ -174,7 +191,7 @@
         body: JSON.stringify({ message: `Update dorm points (${today})`, content: toBase64(content), sha, branch }),
       });
       if (!res.ok) throw new Error(await explain(res));
-      current = JSON.parse(content);
+      rememberPublished();
       update();
       status.innerHTML = notice('ok', `<b>Published! 🎉</b> The website shows the new points in about a minute. <a href="${esc(siteUrl())}" target="_blank" rel="noopener">Open the website</a>`);
     } catch (err) {
@@ -227,14 +244,21 @@
     if (!has) $('#token-state').innerHTML = '';
   }
 
+
   // ------------------------------------------------------------------ start
 
   $('#repo-owner').textContent = gh.owner || 'the repository owner';
   $('#repo-name').textContent = gh.repo || 'the website repository';
-  let timer = null;
-  $('#paste').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(update, 150); });
-  $('#clear-paste').addEventListener('click', () => { $('#paste').value = ''; update(); $('#paste').focus(); });
-  $('#preview-body').addEventListener('input', onNameEdit);
+  const fileInput = $('#xlsx-file');
+  const drop = $('#xlsx-drop');
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) readFile(fileInput.files[0]); });
+  ['dragenter', 'dragover'].forEach(type => drop.addEventListener(type, e => { e.preventDefault(); drop.classList.add('is-drag'); }));
+  ['dragleave', 'drop'].forEach(type => drop.addEventListener(type, () => drop.classList.remove('is-drag')));
+  drop.addEventListener('drop', e => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) readFile(file);
+  });
   $('#publish').addEventListener('click', publish);
   $('#download').addEventListener('click', download);
   $('#token-form').addEventListener('submit', async e => {
@@ -252,5 +276,4 @@
     $('#token-state').innerHTML = notice('info', 'The key was removed from this device.');
   });
   showTokenState();
-  loadCurrent();
 })();

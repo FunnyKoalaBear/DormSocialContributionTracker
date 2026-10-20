@@ -5,18 +5,25 @@
   const cfg = window.DORM_CONFIG || {};
   const core = window.DormCore;
   const $ = (sel, root) => (root || document).querySelector(sel);
-  const MY_ID_KEY = 'dormPoints.myId';
+  const MY_NAME_KEY = 'dormPoints.myName';
   const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
   const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
+  const ANON = 'Anonymous';
+  const LOG_PAGE = 40;
 
   const store = {
     get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
     set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private mode */ } },
+    remove(key) { try { localStorage.removeItem(key); } catch (e) { /* private mode */ } },
   };
+  store.remove('dormPoints.myId'); // older versions remembered the student ID here
 
   let ranked = [];
-  let byId = new Map();
+  let byKey = new Map();
+  let log = [];
   let arena = null;
+  let pinned = false; // card opened by a click (stays) rather than by hovering
+  let logShown = LOG_PAGE;
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -28,11 +35,21 @@
   }
   function pts(n) { return Math.abs(n) === 1 ? 'point' : 'points'; }
   function showPoints(n) { return (n < 0 ? '−' : '') + Math.abs(n); }
+  function signed(n) { return (n < 0 ? '−' : '+') + Math.abs(n); }
   function rankBadge(s) { return s.points > 0 && MEDALS[s.rank] ? MEDALS[s.rank] : `<b>${ordinal(s.rank)}</b>`; }
-  function formatDate(iso) {
-    const d = new Date(iso);
-    return isNaN(d) ? '' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  function formatDate(iso, opts) {
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(iso || '') ? new Date(iso + 'T12:00:00') : new Date(iso);
+    return isNaN(d) ? '' : d.toLocaleDateString(undefined, opts || { day: 'numeric', month: 'short', year: 'numeric' });
   }
+  function shortDate(iso) { return formatDate(iso, { day: 'numeric', month: 'short' }); }
+
+  const categoryIcons = new Map();
+  [].concat(cfg.earn || [], cfg.lose || []).forEach(i => categoryIcons.set(i.title.toLowerCase(), i.icon));
+  function iconFor(e) {
+    return categoryIcons.get(String(e.category).toLowerCase()) ||
+      (/start/i.test(e.category) ? '🏁' : e.points < 0 ? '⚠️' : '✨');
+  }
+  function entryText(e) { return e.reason || e.category; }
 
   // ------------------------------------------------------------------ static content
 
@@ -57,8 +74,18 @@
     $('#stats').innerHTML =
       `<li><span aria-hidden="true">👥</span><b>${ranked.length}</b> students</li>` +
       `<li><span aria-hidden="true">⭐</span><b>${showPoints(total)}</b> dorm points</li>` +
+      `<li><span aria-hidden="true">📜</span><b>${log.length}</b> log entries</li>` +
       (updated ? `<li><span aria-hidden="true">🗓️</span>Updated <b>${esc(updated)}</b></li>` : '');
     $('#footer-updated').textContent = updated ? `Points updated ${updated}` : '';
+  }
+
+  function entriesNote(s) {
+    const n = s.entries.length;
+    return n ? `${n} log entr${n === 1 ? 'y' : 'ies'}` : 'No entries yet';
+  }
+
+  function nameHtml(s) {
+    return s.label ? esc(s.label) : `<span class="anon">${ANON}</span>`;
   }
 
   function renderTop() {
@@ -70,9 +97,9 @@
       return;
     }
     list.innerHTML = shown.map(s =>
-      `<li class="top-item rank-${Math.min(s.rank, 4)}"><button type="button" data-id="${esc(s.id)}">` +
+      `<li class="top-item rank-${Math.min(s.rank, 4)}"><button type="button" data-key="${esc(s.id)}">` +
       `<span class="top-medal">${rankBadge(s)}</span>` +
-      `<span class="top-name">${esc(s.name)}<small>${esc(s.id)}</small></span>` +
+      `<span class="top-name">${nameHtml(s)}<small>${entriesNote(s)}</small></span>` +
       `<span class="top-pts">${showPoints(s.points)}<small>${pts(s.points)}</small></span>` +
       '</button></li>').join('') +
       (top.length > shown.length ? `<li class="empty">+${top.length - shown.length} more tied</li>` : '');
@@ -80,8 +107,8 @@
 
   function renderEveryone() {
     $('#everyone').innerHTML = ranked.map(s =>
-      `<li data-search="${esc((s.name + ' ' + s.id).toLowerCase())}"><button type="button" data-id="${esc(s.id)}">` +
-      `<span class="ev-rank">${s.rank}</span><span class="ev-name">${esc(s.name)}<small>${esc(s.id)}</small></span>` +
+      `<li data-search="${esc((s.label || ANON).toLowerCase())}"><button type="button" data-key="${esc(s.id)}">` +
+      `<span class="ev-rank">${s.rank}</span><span class="ev-name">${nameHtml(s)}<small>${entriesNote(s)}</small></span>` +
       `<span class="ev-pts${s.points < 0 ? ' is-neg' : ''}">${showPoints(s.points)}</span></button></li>`).join('');
   }
 
@@ -96,92 +123,142 @@
     $('#everyone').classList.toggle('is-empty', shown === 0);
   }
 
-  function jumpToBubble(id) {
-    if (!arena || !byId.has(id)) return;
-    arena.select(id, { scroll: true });
+  function jumpToBubble(key) {
+    if (!arena || !byKey.has(key)) return;
+    pinned = true;
+    arena.select(key, { scroll: true });
   }
 
   // ------------------------------------------------------------------ bubble card
 
+  function cardLog(s) {
+    if (!s.entries.length) return '<p class="card-note card-empty">No points logged yet.</p>';
+    return '<ul class="card-log">' + s.entries.map(e =>
+      `<li><span class="cl-icon" aria-hidden="true">${iconFor(e)}</span>` +
+      `<span class="cl-text">${esc(entryText(e))}<small>${esc([e.reason ? e.category : '', shortDate(e.date)].filter(Boolean).join(' · '))}</small></span>` +
+      `<span class="cl-pts ${e.points < 0 ? 'is-neg' : ''}">${signed(e.points)}</span></li>`).join('') + '</ul>';
+  }
+
   function showCard(s, pos) {
     const card = $('#bubble-card');
-    if (!s) { card.hidden = true; return; }
+    if (!s) { card.hidden = true; pinned = false; return; }
     const higher = ranked.filter(x => x.points > s.points);
     const next = higher[higher.length - 1];
     const tied = ranked.filter(x => x.points === s.points).length - 1;
     let note;
     if (!next) note = tied ? 'Sharing the top spot! 🏆' : 'Top of the dorm! 🏆';
     else note = `${next.points - s.points} more ${pts(next.points - s.points)} to catch up with ${ordinal(next.rank)} place`;
-    const isMe = s.id === store.get(MY_ID_KEY);
+    const isMe = s.label && s.label.toLowerCase() === (store.get(MY_NAME_KEY) || '').toLowerCase();
+    const title = s.label || ANON;
     card.innerHTML =
       '<button type="button" class="card-close" aria-label="Close">×</button>' +
       `<div class="card-rank">${rankBadge(s)}</div>` +
-      `<h3 style="font-size: ${s.name.length > 13 ? 18 : s.name.length > 9 ? 21 : 24}px">${esc(s.name)}${isMe ? ' <span class="card-you">you!</span>' : ''}</h3>` +
-      `<p class="card-id">${esc(s.id)}</p>` +
+      `<h3 style="font-size: ${title.length > 13 ? 18 : title.length > 9 ? 21 : 24}px">${esc(title)}${isMe ? ' <span class="card-you">you!</span>' : ''}</h3>` +
       `<p class="card-points"><b>${showPoints(s.points)}</b> ${pts(s.points)}</p>` +
       `<p class="card-note">${esc(ordinal(s.rank))} of ${ranked.length}${tied ? ` · tied with ${tied} other${tied > 1 ? 's' : ''}` : ''}</p>` +
-      `<p class="card-note">${esc(note)}</p>`;
+      `<p class="card-note">${esc(note)}</p>` +
+      `<h4 class="card-log-title">How they got their points</h4>${cardLog(s)}`;
     card.hidden = false;
-    // Place it above the bubble, or below when there's no room.
+    // Place it above the bubble, or below when there's no room, or beside it.
     const w = card.offsetWidth;
     const h = card.offsetHeight;
     const x = Math.min(Math.max(pos.x - w / 2, 8), pos.width - w - 8);
     let y = pos.y - pos.r - h - 14;
-    if (y < 8) y = Math.min(pos.y + pos.r + 14, pos.height - h - 8);
-    card.style.left = x + 'px';
+    if (y < 8) y = pos.y + pos.r + 14;
+    if (y + h > pos.height - 8) y = Math.max(8, pos.height - h - 8);
+    card.style.left = Math.max(8, x) + 'px';
     card.style.top = Math.max(8, y) + 'px';
+  }
+
+  function onBubbleClick(key) {
+    if (!key) return;
+    if (pinned && arena.selected && arena.selected.s.id === key) { arena.select(null); return; }
+    arena.select(key);
+    pinned = true;
+  }
+
+  /** On computers, hovering a bubble shows its card; clicking keeps it open. */
+  function setupHover() {
+    const el = $('#arena');
+    const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
+    el.addEventListener('mouseover', e => {
+      if (pinned || !canHover.matches) return;
+      const b = e.target.closest('.bubble');
+      if (b && (!arena.selected || arena.selected.s.id !== b.dataset.id)) arena.select(b.dataset.id);
+    });
+    el.addEventListener('mouseout', e => {
+      if (pinned || !canHover.matches || !arena.selected) return;
+      const to = e.relatedTarget;
+      if (to && to.closest && (to.closest('.bubble') || to.closest('.bubble-card'))) return;
+      arena.select(null);
+    });
   }
 
   // ------------------------------------------------------------------ find me
 
   function findMe(raw, opts) {
     const quiet = opts && opts.quiet;
-    const id = core.normalizeId(raw);
+    const q = String(raw || '').trim().toLowerCase();
     const msg = $('#findme-msg');
     msg.classList.remove('is-error');
-    if (!id) { msg.textContent = ''; return; }
-    const s = byId.get(id);
+    if (!q) { msg.textContent = ''; return; }
+    const s = ranked.find(x => x.label && x.label.toLowerCase() === q) ||
+      ranked.find(x => x.label && x.label.toLowerCase().startsWith(q));
     if (!s) {
-      msg.textContent = `Hmm, ${id} isn't on the board yet. Double-check your ID, or message the admin if you're new.`;
+      msg.innerHTML = `No bubble called “${esc(raw.trim())}”. If you didn't ask for your name to be shown, your bubble is one of the <b>?</b> ones. Message the admin if you'd like your name on it.`;
       msg.classList.add('is-error');
       return;
     }
-    store.set(MY_ID_KEY, s.id);
+    store.set(MY_NAME_KEY, s.label);
     arena.setMe(s.id);
-    $('#findme-input').value = s.id;
+    $('#findme-input').value = s.label;
     const cheer = s.rank === 1 && s.points > 0 ? ' 🏆' : s.points > 0 ? ' 🎉' : ' Let\'s get some points! 💪';
-    msg.innerHTML = `Hi <b>${esc(s.name)}</b>! You're <b>${ordinal(s.rank)}</b> of ${ranked.length} with <b>${showPoints(s.points)}</b> ${pts(s.points)}.${cheer}`;
-    prefillRequest(s);
-    if (!quiet) arena.select(s.id, { scroll: true });
+    msg.innerHTML = `Hi <b>${esc(s.label)}</b>! You're <b>${ordinal(s.rank)}</b> of ${ranked.length} with <b>${showPoints(s.points)}</b> ${pts(s.points)}.${cheer}`;
+    if (!$('#req-name').value) $('#req-name').value = s.label;
+    if (!quiet) jumpToBubble(s.id);
+  }
+
+  // ------------------------------------------------------------------ points log board
+
+  function renderLogFilters() {
+    const cats = Array.from(new Set(log.map(e => e.category))).sort();
+    $('#log-category').innerHTML = '<option value="">All categories</option>' +
+      cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  }
+
+  function renderLog() {
+    const q = $('#log-search').value.trim().toLowerCase();
+    const cat = $('#log-category').value;
+    const list = log.filter(e => {
+      if (cat && e.category !== cat) return false;
+      if (!q) return true;
+      return [e.student.label || ANON, e.category, e.reason || ''].join(' ').toLowerCase().includes(q);
+    });
+    const shown = list.slice(0, logShown);
+    let html = '';
+    let month = null;
+    for (const e of shown) {
+      const m = e.date ? formatDate(e.date, { month: 'long', year: 'numeric' }) : 'Carried over';
+      if (m !== month) { html += `<li class="log-month">${esc(m)}</li>`; month = m; }
+      html +=
+        `<li class="log-item${e.points < 0 ? ' is-neg' : ''}">` +
+        `<span class="log-date">${e.date ? esc(shortDate(e.date)) : '–'}</span>` +
+        `<span class="log-icon" aria-hidden="true">${iconFor(e)}</span>` +
+        '<span class="log-body">' +
+        `<button type="button" class="log-who" data-key="${esc(e.student.id)}">${nameHtml(e.student)}</button>` +
+        `<span class="log-what">${esc(entryText(e))}</span>` +
+        (e.reason ? `<small>${esc(e.category)}</small>` : '') +
+        '</span>' +
+        `<span class="log-pts">${signed(e.points)}</span></li>`;
+    }
+    $('#log-list').innerHTML = html || '<li class="empty">Nothing matches that search.</li>';
+    $('#log-count').textContent = list.length === log.length
+      ? `${log.length} entries`
+      : `${list.length} of ${log.length} entries`;
+    $('#log-more').hidden = list.length <= shown.length;
   }
 
   // ------------------------------------------------------------------ request form
-
-  function prefillRequest(s) {
-    const idInput = $('#req-id');
-    if (!idInput.value) idInput.value = s.id;
-    if (!$('#req-name').value) $('#req-name').value = s.name;
-    updateRequestHint();
-  }
-
-  function studentEmail(id) {
-    const pattern = cfg.studentEmailPattern;
-    return pattern && core.STUDENT_ID_RE.test(id) ? pattern.replace('{id}', id.toLowerCase()) : '';
-  }
-
-  let lastAutoEmail = '';
-  function updateRequestHint() {
-    const id = core.normalizeId($('#req-id').value);
-    const hint = $('#req-id-hint');
-    const s = byId.get(id);
-    hint.classList.remove('is-error');
-    if (!id) hint.textContent = '';
-    else if (s) hint.textContent = `Hi ${s.name}! 👋 You have ${showPoints(s.points)} ${pts(s.points)} right now.`;
-    else if (ranked.length) { hint.textContent = 'This ID isn\'t on the board. Double-check it (you can still send).'; hint.classList.add('is-error'); }
-    const email = $('#req-email');
-    const auto = studentEmail(id);
-    if (!email.value || email.value === lastAutoEmail) { email.value = auto; lastAutoEmail = auto; }
-  }
 
   function formatBytes(n) {
     return n > 1024 * 1024 ? (n / 1024 / 1024).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
@@ -218,7 +295,6 @@
 
     form.action = 'https://formsubmit.co/' + String(cfg.requestEmail || '').trim();
 
-    $('#req-id').addEventListener('input', updateRequestHint);
     const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     $('#req-date').value = today();
 
@@ -281,19 +357,19 @@
 
     form.addEventListener('submit', e => {
       error.textContent = '';
-      const id = core.normalizeId($('#req-id').value);
+      const name = $('#req-name').value.trim();
+      const email = $('#req-email').value.trim();
       const reason = $('#req-reason').value.trim();
       const problems = [];
-      if (!id) problems.push('your student ID');
+      if (!name) problems.push('your name');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) problems.push('your university email');
       if (reason.length < 10) problems.push('a short description of what you did');
       if (preparing) { e.preventDefault(); error.textContent = 'Hang on, the photo is still being prepared…'; return; }
-      if (problems.length) { e.preventDefault(); error.textContent = 'Please add ' + problems.join(' and ') + '.'; return; }
+      if (problems.length) { e.preventDefault(); error.textContent = 'Please add ' + problems.join(', ').replace(/, ([^,]*)$/, ' and $1') + '.'; return; }
       if (photo.files[0] && photo.files[0].size > MAX_PHOTO_BYTES) { e.preventDefault(); error.textContent = 'That photo is too big. Please pick one under 5 MB.'; return; }
       if (!cfg.requestEmail) { e.preventDefault(); error.textContent = 'Requests aren\'t set up yet. Please message the admin directly.'; return; }
 
-      $('#req-id').value = id;
-      const name = $('#req-name').value.trim();
-      form.elements._subject.value = `Dorm points request: ${name ? name + ' ' : ''}(${id})`;
+      form.elements._subject.value = `Dorm points request: ${name}`;
       form.elements._next.value = location.href.split(/[?#]/)[0] + '?sent=1#request';
       submit.disabled = true;
       submit.textContent = 'Sending…';
@@ -309,9 +385,8 @@
       form.reset();
       $('#req-date').value = today();
       showPhoto(null);
-      const me = byId.get(store.get(MY_ID_KEY));
-      if (me) prefillRequest(me);
-      updateRequestHint();
+      const me = store.get(MY_NAME_KEY);
+      if (me) $('#req-name').value = me;
     });
 
     const params = new URLSearchParams(location.search);
@@ -335,17 +410,21 @@
     renderRules();
     setupRequestForm();
 
-    arena = new window.BubbleArena($('#arena'), { onSelect: showCard });
+    arena = new window.BubbleArena($('#arena'), { onSelect: showCard, onBubbleClick });
+    setupHover();
     $('#arena').addEventListener('click', e => {
       if (e.target.closest('.card-close') || (!e.target.closest('.bubble') && !e.target.closest('.bubble-card'))) arena.select(null);
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') arena.select(null); });
     $('#findme').addEventListener('submit', e => { e.preventDefault(); findMe($('#findme-input').value); });
     $('#everyone-search').addEventListener('input', e => filterEveryone(e.target.value));
-    $('#ranking').addEventListener('click', e => {
-      const btn = e.target.closest('button[data-id]');
-      if (btn) jumpToBubble(btn.dataset.id);
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-key]');
+      if (btn && !btn.closest('#arena')) jumpToBubble(btn.dataset.key);
     });
+    $('#log-search').addEventListener('input', () => { logShown = LOG_PAGE; renderLog(); });
+    $('#log-category').addEventListener('change', () => { logShown = LOG_PAGE; renderLog(); });
+    $('#log-more').addEventListener('click', () => { logShown += LOG_PAGE * 2; renderLog(); });
 
     let data;
     try {
@@ -354,19 +433,40 @@
       $('#arena-message').textContent = 'Couldn\'t load the points right now. Please refresh in a moment.';
       return;
     }
-    ranked = core.rankStudents((data.students || []).filter(s => s && s.id));
-    byId = new Map(ranked.map(s => [s.id, s]));
+    // `label` is the agreed website name ('' = anonymous); `name` is what screen readers hear.
+    ranked = core.rankStudents((data.students || []).filter(s => s && s.key).map(s => ({
+      id: s.key,
+      name: s.name || '',
+      label: s.name || '',
+      points: Number(s.points) || 0,
+      entries: [],
+    })));
+    for (const s of ranked) s.name = s.label || ANON;
+    byKey = new Map(ranked.map(s => [s.id, s]));
+    log = (data.log || []).filter(e => e && byKey.has(e.who)).map(e => ({
+      student: byKey.get(e.who),
+      date: e.date || '',
+      category: e.category || 'Other',
+      points: Number(e.points) || 0,
+      reason: e.reason || '',
+    }));
+    for (const e of log) e.student.entries.push(e);
     $('#arena-message').hidden = ranked.length > 0;
     if (!ranked.length) $('#arena-message').textContent = 'No students yet. Check back soon!';
 
     renderStats(data);
     renderTop();
     renderEveryone();
+    renderLogFilters();
+    renderLog();
     arena.setStudents(ranked);
 
-    const savedId = store.get(MY_ID_KEY);
-    if (savedId && byId.has(savedId)) findMe(savedId, { quiet: true });
-    updateRequestHint();
+    const savedName = store.get(MY_NAME_KEY);
+    if (savedName) {
+      const me = ranked.find(s => s.label && s.label.toLowerCase() === savedName.toLowerCase());
+      if (me) findMe(me.label, { quiet: true });
+      else store.remove(MY_NAME_KEY);
+    }
   }
 
   start();

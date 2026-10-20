@@ -32,13 +32,8 @@ kbd {
   border-radius: 7px;
 }
 
-.paste {
-  min-height: 150px;
-  font: 600 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  white-space: pre;
-  tab-size: 12;
-}
-.paste-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+.xlsx-drop { margin-top: 6px; }
+.xlsx-icon { font-size: 44px; line-height: 1; }
 
 .notice { margin-top: 12px; padding: 10px 14px; border: 2.5px solid var(--ink); border-radius: 14px; font-weight: 700; }
 .notice ul { margin: 6px 0 0; padding-left: 20px; }
@@ -70,17 +65,6 @@ kbd {
 .preview-table td { padding: 5px 10px; border-top: 2px dashed #ece5d2; vertical-align: middle; }
 .preview-table .num { text-align: right; white-space: nowrap; }
 .preview-table .pts { font-family: var(--font-display); font-size: 17px; }
-.name-edit {
-  width: 100%;
-  min-width: 110px;
-  padding: 4px 8px;
-  font-weight: 800;
-  background: #fffaf0;
-  border: 2px solid #d9cfb8;
-  border-radius: 9px;
-}
-.name-edit:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px var(--yellow); }
-.name-edit.is-custom { background: #e8f5ff; border-color: var(--blue); }
 .diff-up { color: #23843a; font-weight: 900; }
 .diff-down { color: #c73535; font-weight: 900; }
 .diff-new { padding: 1px 8px; color: #fff; font-weight: 900; font-size: 12.5px; background: var(--blue); border-radius: 99px; }

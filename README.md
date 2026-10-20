@@ -2,12 +2,13 @@
 
 A cute, Super-Mario-World-coloured leaderboard for the dorm's social contribution points.
 
-- **Bubble board**: every student is a bouncing bubble with their first name and student ID. More points = higher bubble. Tap a bubble to see rank and points.
-- **Find me**: students type their ID to find their bubble (it gets a "YOU" tag on later visits).
+- **Bubble board**: every student is a bouncing bubble. Students who agreed show their chosen name; everyone else is an anonymous **?** bubble. More points = higher bubble. Hover (or tap) a bubble to see its rank, points and the full log of why it got them.
+- **Find me**: students type their name on the board to find their bubble (it gets a "YOU" tag on later visits).
 - **Leaderboard**: top students plus a searchable list of everyone.
+- **Points log**: every point given or taken, newest first, searchable and filterable by category.
 - **How to earn points**: the point system and why points matter.
 - **Ask for points**: students describe what they did, attach a photo, and it's emailed to the admin.
-- **Admin page** (`admin.html`): paste the Students tab from Excel and publish.
+- **Admin page** (`admin.html`): drop in the Excel tracker and publish.
 
 It's a plain static website (HTML/CSS/JS, no build step), so it runs for free on GitHub Pages. The animations run in each visitor's browser, so they work the same on GitHub Pages.
 
@@ -26,29 +27,39 @@ Requests are emailed to you through [FormSubmit](https://formsubmit.co) (free, n
 
 1. Open the website and send a test request yourself.
 2. FormSubmit emails **2024m735@kuas.ac.jp** an activation link. Click it. (Check spam/junk if you don't see it.)
-3. Done: every request now arrives as an email with the student's ID, name, activity, date, description and photo. Hitting **Reply** answers the student (their uni email is pre-filled from their ID).
+3. Done: every request now arrives as an email with the student's name, university email, activity, date, description and photo. Hitting **Reply** answers the student.
 
 Optional: the activation email also gives you a random code. Put it in `js/config.js` as `requestEmail` to hide your address from the page source.
 
 ## 3. Update the points (every time)
 
-1. Open **https://funnykoalabear.github.io/DormSocialContributionTracker/admin.html**
-2. In Excel, open the **Students** tab, press **Ctrl+A**, then **Ctrl+C**.
-3. Paste into the box on the admin page. It shows everyone's points and what changed since the last update. You can fix any bubble name right there; your fixes are remembered.
-4. Click **Publish to website 🚀**. The site updates in about a minute.
+1. Save your tracker in Excel.
+2. Open **https://funnykoalabear.github.io/DormSocialContributionTracker/admin.html**
+3. Drop the `.xlsx` file into the box (or click it and choose the file). It's read in your browser only; the file itself is never uploaded anywhere.
+4. Check the preview and any warnings, then click **Publish to website 🚀**. The site updates in about a minute.
+
+The admin page reads three tabs: **Students** (including the **Website Name** column), **Points Log** and **Point System**. Points come from the Points Log's **Points** column (same as Excel's totals); if a row has no Points value it falls back to Custom Points, then to the Point System.
 
 The first time, the admin page asks for a **publishing key** (a GitHub fine-grained token that can only edit this one repository). The page walks you through making it. It's stored only in that browser.
 
 No key? Click **Download points.json** and upload it to the `data` folder on GitHub (**Add file → Upload files → Commit**).
 
+## Who is named on the website
+
+Only students with a **Website Name** on the Students tab are named. Leave it blank and the student is an anonymous **?** bubble. When someone new agrees to be named, type their chosen name in that column and publish again.
+
+If a reason in the Points Log mentions a student's real name, the website shows their Website Name instead, or "a dorm-mate" if they aren't named. The admin page lists every swap before you publish.
+
 ## Changing things
 
 - **Point rules, "why points matter", email address**: edit `js/config.js` on GitHub (open the file, click the pencil ✏️).
-- **Bubble names**: change them on the admin page before publishing.
+- **Names on bubbles**: edit the **Website Name** column in Excel, then publish again.
 
 ## What's public
 
-Anyone with the link can see each student's **ID, first name and total points**. Full names, the points log and reasons are never uploaded. Keep the Excel file out of this repository (`.gitignore` blocks `.xlsx` files).
+Anyone with the link can see each student's **Website Name (only if they agreed), total points and points log** (date, category, points and reason, with names swapped as above). Student IDs, full names and "Recorded By" are never published; each bubble just gets a throwaway key that changes on every publish. Keep the Excel file out of this repository (`.gitignore` blocks `.xlsx` files).
+
+Note: versions of `data/points.json` published before this change listed student IDs and first names, and they are still in the repository's Git history.
 
 ## Files
 
@@ -56,9 +67,9 @@ Anyone with the link can see each student's **ID, first name and total points**.
 | --- | --- |
 | `index.html`, `js/app.js` | The main page |
 | `js/bubbles.js` | Bouncing bubble physics |
-| `admin.html`, `js/admin.js` | Paste-and-publish admin page |
-| `js/core.js` | Reads the Excel paste, picks first names, ranks students |
+| `admin.html`, `js/admin.js` | Upload-and-publish admin page (reads the Excel file with SheetJS) |
+| `js/core.js` | Reads the workbook, swaps names in reasons, ranks students, builds `points.json` |
 | `js/config.js` | Settings you can edit |
 | `data/points.json` | The published points (written by the admin page) |
 | `css/`, `assets/` | Styles, clouds and hills |
-| `tests/` | Tests for the Excel reader: `node --test tests/core.test.js` |
+| `tests/` | Tests for the workbook reader: `node --test tests/core.test.js` |

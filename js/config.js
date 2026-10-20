@@ -12,10 +12,6 @@ window.DORM_CONFIG = {
   // address if you don't want the address visible in the page source.
   requestEmail: '2024m735@kuas.ac.jp',
 
-  // Students' university email, used to pre-fill the reply address on the request form.
-  // {id} becomes the student ID in lowercase. Set to '' to turn this off.
-  studentEmailPattern: '{id}@kuas.ac.jp',
-
   // Where the admin page publishes new points.
   github: {
     owner: 'FunnyKoalaBear',
