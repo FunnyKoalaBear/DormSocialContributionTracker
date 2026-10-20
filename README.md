@@ -68,6 +68,10 @@ Note: versions of `data/points.json` published before this change listed student
 | `index.html`, `js/app.js` | The main page |
 | `js/bubbles.js` | Bouncing bubble physics |
 | `admin.html`, `js/admin.js` | Upload-and-publish admin page (reads the Excel file with SheetJS) |
+
+
+
+My one commit here 
 | `js/core.js` | Reads the workbook, swaps names in reasons, ranks students, builds `points.json` |
 | `js/config.js` | Settings you can edit |
 | `data/points.json` | The published points (written by the admin page) |
