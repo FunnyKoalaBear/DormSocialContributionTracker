@@ -29,17 +29,7 @@
     <nav class="nav"><a href="./">← Back to the website</a></nav>
   </header>
 
-  <section class="panel lock" id="lock" aria-labelledby="lock-title">
-    <h2 id="lock-title" class="panel-title"><span class="title-badge" style="--b: var(--red)">🔒</span>Admin only</h2>
-    <form class="token-row" id="lock-form" autocomplete="off">
-      <label for="lock-password" class="sr-only">Password</label>
-      <input id="lock-password" class="input" type="password" placeholder="Password" autofocus>
-      <button type="submit" class="btn btn-red">Unlock</button>
-    </form>
-    <p class="form-error" id="lock-error" role="alert"></p>
-  </section>
-
-  <main id="admin-main" hidden>
+  <main>
     <section class="panel" aria-labelledby="update-title">
       <h2 id="update-title" class="panel-title"><span class="title-badge" style="--b: var(--green)">📋</span>Update the points</h2>
       <ol class="steps">
