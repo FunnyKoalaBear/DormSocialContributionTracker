@@ -32,6 +32,7 @@ kbd {
   border-radius: 7px;
 }
 
+.lock { position: relative; z-index: 1; max-width: 520px; margin: 0 auto 40px; }
 .xlsx-drop { margin-top: 6px; }
 .xlsx-icon { font-size: 44px; line-height: 1; }
 

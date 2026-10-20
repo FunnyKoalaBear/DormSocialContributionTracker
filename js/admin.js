@@ -245,6 +245,36 @@
   }
 
 
+  // ------------------------------------------------------------------ password
+
+  // SHA-256 of the admin password. This only keeps casual visitors out: the page is
+  // public, so the real protection is the GitHub key, which only the admin's browser has.
+  // To change the password, put the SHA-256 of the new one here.
+  const PASSWORD_HASH = 'bcb6fe9ddcc2799d676f9a7e2865e68c633d8e324af27af8d4888b50cc356083';
+  const UNLOCK_KEY = 'dormPoints.unlocked';
+
+  async function sha256(text) {
+    const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function unlock() {
+    $('#lock').hidden = true;
+    $('#admin-main').hidden = false;
+  }
+
+  $('#lock-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (await sha256($('#lock-password').value) === PASSWORD_HASH) {
+      store.set(UNLOCK_KEY, PASSWORD_HASH);
+      unlock();
+    } else {
+      $('#lock-error').textContent = 'Wrong password.';
+      $('#lock-password').select();
+    }
+  });
+  if (store.get(UNLOCK_KEY) === PASSWORD_HASH) unlock();
+
   // ------------------------------------------------------------------ start
 
   $('#repo-owner').textContent = gh.owner || 'the repository owner';
